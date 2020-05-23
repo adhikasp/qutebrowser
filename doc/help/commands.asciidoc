@@ -35,6 +35,7 @@ possible to run or bind multiple commands by separating them with `;;`.
 |<<bookmark-add,bookmark-add>>|Save the current page as a bookmark, or a specific url.
 |<<bookmark-del,bookmark-del>>|Delete a bookmark.
 |<<bookmark-load,bookmark-load>>|Load a bookmark.
+|<<brave-adblock-update,brave-adblock-update>>|Update the adblock block lists.
 |<<buffer,buffer>>|Select tab by index or url/title best match.
 |<<clear-keychain,clear-keychain>>|Clear the currently entered key chain.
 |<<clear-messages,clear-messages>>|Clear all message notifications.
@@ -232,6 +233,12 @@ Load a bookmark.
 
 ==== note
 * This command does not split arguments after the last argument and handles quotes literally.
+
+[[brave-adblock-update]]
+=== brave-adblock-update
+Update the adblock block lists.
+
+This updates `~/.local/share/qutebrowser/blocked-hosts` with downloaded host lists and re-reads `~/.config/qutebrowser/blocked-hosts`.
 
 [[buffer]]
 === buffer
@@ -887,8 +894,6 @@ If the URL contains newlines, each line gets opened in its own tab.
 ==== optional arguments
 * +*-r*+, +*--related*+: If opening a new tab, position the tab as related to the current one (like clicking on a link).
 
-* +*-S*+, +*--sibling*+: If opening a new tab, position the as a sibling of the current one.
-
 * +*-b*+, +*--bg*+: Open in a new background tab.
 * +*-t*+, +*--tab*+: Open in a new tab.
 * +*-w*+, +*--window*+: Open in a new window.
@@ -1214,9 +1219,7 @@ Load a session.
 
 [[session-save]]
 === session-save
-Syntax: +:session-save [*--current*] [*--quiet*] [*--force*] [*--only-active-window*]
-             [*--with-private*]
-             ['name']+
+Syntax: +:session-save [*--current*] [*--quiet*] [*--force*] [*--only-active-window*] [*--with-private*] ['name']+
 
 Save a session.
 
