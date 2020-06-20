@@ -34,7 +34,7 @@ from qutebrowser.misc import objects, sql
 
 
 # increment to indicate that HistoryCompletion must be regenerated
-_USER_VERSION = 2
+_USER_VERSION = 3
 web_history = typing.cast('WebHistory', None)
 
 
@@ -113,13 +113,18 @@ class CompletionHistory(sql.SqlTable):
 
     """History which only has the newest entry for each URL."""
 
-    def __init__(self, parent=None):
-        super().__init__("CompletionHistory", ['url', 'title', 'last_atime'],
+    def __init__(self, parent=None, drop=False):
+        super().__init__("CompletionHistory", ['url', 'title', 'last_atime',
+                                               'visits', 'frecency'],
                          constraints={'url': 'PRIMARY KEY',
                                       'title': 'NOT NULL',
-                                      'last_atime': 'NOT NULL'},
-                         parent=parent)
+                                      'last_atime': 'INTEGER NOT NULL',
+                                      'visits': 'INTEGER NOT NULL',
+                                      'frecency': 'INTEGER NOT NULL'},
+                         parent=parent, drop=drop)
         self.create_index('CompletionHistoryAtimeIndex', 'last_atime')
+        self.create_index('CompletionHistoryVisitsIndex', 'visits')
+        self.create_index('CompletionHistoryFrecencyIndex', 'frecency')
 
 
 class WebHistory(sql.SqlTable):
@@ -150,17 +155,21 @@ class WebHistory(sql.SqlTable):
                                       'redirect': 'NOT NULL'},
                          parent=parent)
         self._progress = progress
-        # Store the last saved url to avoid duplicate immedate saves.
+        # Store the last saved url to avoid duplicate immediate saves.
         self._last_url = None
 
-        self.completion = CompletionHistory(parent=self)
-        self.metainfo = CompletionMetaInfo(parent=self)
+        drop_completion = False
 
         if sql.Query('pragma user_version').run().value() < _USER_VERSION:
-            self.completion.delete_all()
+            drop_completion = True
+
+        self.metainfo = CompletionMetaInfo(parent=self)
+        self.completion = CompletionHistory(parent=self,
+                                            drop=drop_completion)
         if self.metainfo['force_rebuild']:
-            self.completion.delete_all()
             self.metainfo['force_rebuild'] = False
+            if not drop_completion:
+                self.completion.delete_all()
 
         if not self.completion:
             # either the table is out-of-date or the user wiped it manually
@@ -191,7 +200,8 @@ class WebHistory(sql.SqlTable):
     def __contains__(self, url):
         return self._contains_query.run(val=url).value()
 
-    @config.change_filter('completion.web_history.exclude')
+    @config.change_filter('completion.web_history.frecency_bonus',
+                          'completion.web_history.exclude')
     def _on_config_changed(self):
         self.metainfo['force_rebuild'] = True
 
@@ -211,12 +221,19 @@ class WebHistory(sql.SqlTable):
         data = {
             'url': [],
             'title': [],
-            'last_atime': []
+            'last_atime': [],
+            'visits': [],
+            'frecency': [],
         }  # type: typing.Mapping[str, typing.MutableSequence[str]]
         # select the latest entry for each url
-        q = sql.Query('SELECT url, title, max(atime) AS atime FROM History '
-                      'WHERE NOT redirect and url NOT LIKE "qute://back%" '
-                      'GROUP BY url ORDER BY atime asc')
+        q = sql.Query('SELECT url, title, MAX(atime) AS last_atime, '
+                      'COUNT(*) AS visits, '
+                      '(COUNT(*) - 1) * {} + MAX(atime) AS frecency '
+                      'FROM History '
+                      'WHERE NOT redirect AND url NOT LIKE "qute://back%" '
+                      'GROUP BY url ORDER BY last_atime ASC'.format(
+                          config.val.completion.web_history.frecency_bonus))
+
         entries = list(q.run())
 
         if len(entries) > self._PROGRESS_THRESHOLD:
@@ -230,11 +247,12 @@ class WebHistory(sql.SqlTable):
                 continue
             data['url'].append(self._format_completion_url(url))
             data['title'].append(entry.title)
-            data['last_atime'].append(entry.atime)
-
-        self._progress.finish()
+            data['last_atime'].append(entry.last_atime)
+            data['visits'].append(entry.visits)
+            data['frecency'].append(entry.frecency)
 
         self.completion.insert_batch(data, replace=True)
+        self._progress.finish()
         sql.Query('pragma user_version = {}'.format(_USER_VERSION)).run()
 
     def get_recent(self):
@@ -332,11 +350,26 @@ class WebHistory(sql.SqlTable):
             if redirect or self._is_excluded(url):
                 return
 
-            self.completion.insert({
-                'url': self._format_completion_url(url),
+            f_url = self._format_completion_url(url)
+            result = self.completion.insert({
+                'url': f_url,
                 'title': title,
-                'last_atime': atime
-            }, replace=True)
+                'last_atime': atime,
+                'visits': 1,
+                'frecency': atime,
+            }, ignore=True)
+
+            if not result.rows_affected():
+                update = {
+                    'visits': 'visits + 1',
+                    'frecency': '{} + visits * {}'.format(
+                        atime,
+                        config.val.completion.web_history.frecency_bonus
+                    ),
+                    'last_atime': atime
+                }
+
+                self.completion.update(update, {'url': f_url}, escape=False)
 
     def _format_url(self, url):
         return url.toString(QUrl.RemovePassword | QUrl.FullyEncoded)
