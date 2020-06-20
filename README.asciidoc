@@ -6,6 +6,13 @@
 qutebrowser
 ===========
 
+THIS IS A MIX AND MATCH of qutebrowser PRs that I like and merge by myself before it was
+merged on the upstream qutebrowser github.
+
+Current list of patched PR:
+- https://github.com/qutebrowser/qutebrowser/pull/5481[frecency history]
+- https://github.com/qutebrowser/qutebrowser/pull/4602[tree-based tabs]
+
 // QUTE_WEB_HIDE
 image:icons/qutebrowser-64x64.png[qutebrowser logo] *A keyboard-driven, vim-like browser based on PyQt5 and Qt.*
 
