@@ -139,7 +139,7 @@
 |<<completion.web_history.sort_criterion,completion.web_history.sort_criterion>>|How to sort URLs in the web history.
 |<<confirm_quit,confirm_quit>>|Require a confirmation before quitting the application.
 |<<content.autoplay,content.autoplay>>|Automatically start playing `<video>` elements.
-|<<content.blocking.adblock.enabled,content.blocking.adblock.enabled>>|Enable Brave AdBlock.
+|<<content.blocking.adblock.enabled,content.blocking.adblock.enabled>>|Enable Adblock Plus syntax adblock lists using Brave Browsers's adblocking library. This feature requires the "adblock" Python package, which is an optional dependency of qutebrowser. It can be installed using the command `pip install --user adblock`.
 |<<content.blocking.adblock.lists,content.blocking.adblock.lists>>|List of URLs of lists which contain adblock rules.
 |<<content.blocking.hosts.enabled,content.blocking.hosts.enabled>>|Enable host blocking.
 |<<content.blocking.hosts.lists,content.blocking.hosts.lists>>|List of URLs of lists which contain hosts to block.
@@ -1941,7 +1941,7 @@ On QtWebKit, this setting is unavailable.
 
 [[content.blocking.adblock.enabled]]
 === content.blocking.adblock.enabled
-Enable Brave AdBlock.
+Enable Adblock Plus syntax adblock lists using Brave Browsers's adblocking library. This feature requires the "adblock" Python package, which is an optional dependency of qutebrowser. It can be installed using the command `pip install --user adblock`.
 
 This setting supports URL patterns.
 
@@ -1997,6 +1997,7 @@ Default:
 [[content.blocking.whitelist]]
 === content.blocking.whitelist
 A list of patterns that should always be loaded, despite being ad-blocked. Local domains are always exempt from adblocking.
+Note this whitelists otherwise blocked requests, not first-party URLs. As an example, if `example.org` loads an ad from `ads.example.org`, the whitelist entry could be `https://ads.example.org/*`. If you want to disable the adblocker on a given page, use the `content.host_blocking.enabled` setting with a URL pattern instead.
 
 Type: <<types,List of UrlPattern>>
 
@@ -4394,11 +4395,8 @@ Lists with duplicate flags are invalid. Each item is checked against the valid v
 
 When setting from a string, pass a json-like list, e.g. `["one", "two"]`.
 |ListOrValue|A list of values, or a single value.
-<<<<<<< HEAD
 |NewChildPosition|How new children are positioned.
-=======
 |LogLevel|A logging level.
->>>>>>> origin/master
 |NewTabPosition|How new tabs are positioned.
 |Padding|Setting for paddings around elements.
 |Perc|A percentage.
