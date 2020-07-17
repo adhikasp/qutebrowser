@@ -1,7 +1,8 @@
-# vim: ft=python fileencoding=utf-8 sts=4 sw=4 et:
+#!/bin/bash
+# vim: ft=sh fileencoding=utf-8 sts=4 sw=4 et:
 
-# Copyright 2014-2020 Florian Bruhin (The Compiler) <mail@qutebrowser.org>
-#
+# Copyright 2020 Florian Bruhin (The Compiler) <mail@qutebrowser.org>
+
 # This file is part of qutebrowser.
 #
 # qutebrowser is free software: you can redistribute it and/or modify
@@ -17,17 +18,22 @@
 # You should have received a copy of the GNU General Public License
 # along with qutebrowser.  If not, see <http://www.gnu.org/licenses/>.
 
-"""A keyboard-driven, vim-like browser based on PyQt5."""
+set -e
 
-import os.path
+script_list=$(mktemp)
+find scripts/dev/ -name '*.sh' > "$script_list"
+find misc/userscripts/ -type f -exec grep -lE '[/ ][bd]ash$|[/ ]sh$|[/ ]ksh$' {} + >> "$script_list"
+mapfile -t scripts < "$script_list"
+rm -f "$script_list"
 
-__author__ = "Florian Bruhin"
-__copyright__ = "Copyright 2014-2020 Florian Bruhin (The Compiler)"
-__license__ = "GPL"
-__maintainer__ = __author__
-__email__ = "mail@qutebrowser.org"
-__version__ = "1.13.1"
-__version_info__ = tuple(int(part) for part in __version__.split('.'))
-__description__ = "A keyboard-driven, vim-like browser based on PyQt5."
-
-basedir = os.path.dirname(os.path.realpath(__file__))
+if [[ $1 == --docker ]]; then
+    shift 1
+    docker run \
+            -v "$PWD:/outside" \
+            -w /outside \
+            -t \
+            koalaman/shellcheck:stable "$@" "${scripts[@]}"
+else
+    shellcheck --version
+    shellcheck "$@" "${scripts[@]}"
+fi
